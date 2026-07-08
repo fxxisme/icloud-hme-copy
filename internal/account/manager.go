@@ -238,6 +238,7 @@ func (m *Manager) ListAccounts() []*Account {
 }
 
 // HMEClient 为指定账号创建一个新的 HME 客户端。
+// 必须有有效的 Cookie 才能使用 HME 功能。
 func (m *Manager) HMEClient(id string, verbose bool) (*hme.Client, error) {
 	m.mu.Lock()
 	acc, ok := m.accounts[id]
@@ -245,7 +246,46 @@ func (m *Manager) HMEClient(id string, verbose bool) (*hme.Client, error) {
 	if !ok {
 		return nil, fmt.Errorf("账号不存在: %s", id)
 	}
+	if len(acc.Cookies) == 0 {
+		return nil, fmt.Errorf("账号未配置 Cookie，无法使用 HME 功能")
+	}
 	return hme.NewClient(acc.Cookies, acc.Host, acc.Proxy, verbose)
+}
+
+// HMEClientWithPassword 为指定账号创建一个新的 HME 客户端,使用账号密码登录。
+// 登录成功后会自动获取 Cookie 并保存到账号配置。
+func (m *Manager) HMEClientWithPassword(id, password string, otpProvider hme.OTPProvider) (*hme.Client, error) {
+	m.mu.Lock()
+	acc, ok := m.accounts[id]
+	m.mu.Unlock()
+	if !ok {
+		return nil, fmt.Errorf("账号不存在: %s", id)
+	}
+
+	email := acc.ICloudEmail
+	if email == "" {
+		email = acc.RealEmail
+	}
+	if email == "" {
+		return nil, fmt.Errorf("账号未设置邮箱地址")
+	}
+
+	client, err := hme.NewClient(nil, acc.Host, acc.Proxy, true)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := client.Login(email, password, otpProvider); err != nil {
+		return nil, err
+	}
+
+	// 保存登录后的 Cookie 到账号
+	m.mu.Lock()
+	acc.Cookies = client.Cookies
+	m.save()
+	m.mu.Unlock()
+
+	return client, nil
 }
 
 // MailClient 为指定账号创建 IMAP 邮件客户端。

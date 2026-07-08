@@ -63,6 +63,8 @@ type Client struct {
 	Cookies     map[string]string
 	Host        string // "icloud.com" 或 "icloud.com.cn"
 	Proxy       string // HTTP/SOCKS5 代理
+	Username    string // iCloud 账号 (用于登录)
+	Password    string // iCloud 密码 (用于登录)
 	Verbose     bool
 	httpc       tls_client.HttpClient
 	setupURL    string

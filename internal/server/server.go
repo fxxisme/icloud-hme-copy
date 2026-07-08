@@ -55,6 +55,7 @@ func (s *Server) register() {
 		api.POST("/accounts", s.addAccount)
 		api.DELETE("/accounts/:id", s.removeAccount)
 		api.POST("/accounts/:id/password", s.setAppPassword)
+		api.POST("/accounts/:id/login", s.loginAccount)
 
 		// ===== 核心接口 1: 创建邮箱 =====
 		api.POST("/create", s.createAlias)
@@ -237,6 +238,43 @@ func (s *Server) setAppPassword(c *gin.Context) {
 		return
 	}
 	ok(c, gin.H{"id": id, "icloud_email": req.ICloudEmail})
+}
+
+type loginReq struct {
+	Password string `json:"password" binding:"required"`
+	OTPCode  string `json:"otp_code"` // 可选 2FA 验证码
+}
+
+func (s *Server) loginAccount(c *gin.Context) {
+	id := c.Param("id")
+	var req loginReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, http.StatusBadRequest, "参数错误: password 必填 — "+err.Error())
+		return
+	}
+
+	var otpProvider hme.OTPProvider
+	if req.OTPCode != "" {
+		otp := req.OTPCode
+		otpProvider = func() (string, error) {
+			return otp, nil
+		}
+	}
+
+	client, err := s.mgr.HMEClientWithPassword(id, req.Password, otpProvider)
+	if err != nil {
+		if isSessionError(err.Error()) {
+			fail(c, http.StatusUnauthorized, err.Error())
+		} else {
+			fail(c, http.StatusBadGateway, "登录失败: "+err.Error())
+		}
+		return
+	}
+
+	ok(c, gin.H{
+		"id":      id,
+		"cookies": client.Cookies,
+	})
 }
 
 func (s *Server) listAliases(c *gin.Context) {
