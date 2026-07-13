@@ -68,9 +68,9 @@ install_go() {
 
   log "下载并校验 ${go_version}"
   curl --fail --silent --show-error --location --retry 3 \
-    "https://go.dev/dl/${archive}" -o "${GO_TMP_DIR}/${archive}"
+    "https://dl.google.com/go/${archive}" -o "${GO_TMP_DIR}/${archive}"
   checksum_response="$(curl --fail --silent --show-error --location --retry 3 \
-    "https://go.dev/dl/${archive}.sha256")"
+    "https://dl.google.com/go/${archive}.sha256")"
   if [[ "${checksum_response}" =~ (^|[[:space:]])([0-9a-fA-F]{64})([[:space:]]|$) ]]; then
     checksum="${BASH_REMATCH[2],,}"
   else

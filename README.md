@@ -54,7 +54,7 @@ cd icloud-hme-copy
 bash deploy/install.sh
 ```
 
-如果系统未安装 Go 或版本低于 `1.26`，脚本会从 `go.dev` 下载最新稳定版，校验 SHA256 后安装到 `/usr/local/go`；已有合格版本不会被修改。随后脚本会创建低权限用户，并将运行文件集中到 `/opt/icloud-hme`：
+如果系统未安装 Go 或版本低于 `1.26`，脚本会通过 Go 官方下载服务获取最新稳定版，校验 SHA256 后安装到 `/usr/local/go`；已有合格版本不会被修改。随后脚本会创建低权限用户，并将运行文件集中到 `/opt/icloud-hme`：
 
 ```text
 /opt/icloud-hme/
@@ -599,7 +599,7 @@ curl http://127.0.0.1:8081/api/accounts \
   -H "Authorization: Bearer $API_KEY"
 ```
 
-For a single x86_64 Linux server, the recommended deployment is a Linux binary managed by systemd. SSH into the server, clone the repository, and run the installer. If Go 1.26+ is unavailable, the script downloads the latest stable Go release from `go.dev`, verifies its SHA256 checksum, and installs it under `/usr/local/go`. Runtime files are kept under `/opt/icloud-hme`; only the systemd unit is installed outside that directory. Existing API keys and account data are preserved when the installer is run again.
+For a single x86_64 Linux server, the recommended deployment is a Linux binary managed by systemd. SSH into the server, clone the repository, and run the installer. If Go 1.26+ is unavailable, the script uses the official Go download service to fetch the latest stable release, verifies its SHA256 checksum, and installs it under `/usr/local/go`. Runtime files are kept under `/opt/icloud-hme`; only the systemd unit is installed outside that directory. Existing API keys and account data are preserved when the installer is run again.
 
 ```bash
 git clone https://github.com/fxxisme/icloud-hme-copy.git
