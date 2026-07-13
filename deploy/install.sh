@@ -50,7 +50,7 @@ go_version_supported() {
 }
 
 install_go() {
-  local version_response go_version archive checksum
+  local version_response checksum_response go_version archive checksum
 
   for command_name in tar sha256sum mktemp; do
     require_command "${command_name}"
@@ -69,9 +69,13 @@ install_go() {
   log "下载并校验 ${go_version}"
   curl --fail --silent --show-error --location --retry 3 \
     "https://go.dev/dl/${archive}" -o "${GO_TMP_DIR}/${archive}"
-  checksum="$(curl --fail --silent --show-error --location --retry 3 \
-    "https://go.dev/dl/${archive}.sha256" | tr -d '[:space:]')"
-  [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]] || die "Go SHA256 格式无效"
+  checksum_response="$(curl --fail --silent --show-error --location --retry 3 \
+    "https://go.dev/dl/${archive}.sha256")"
+  if [[ "${checksum_response}" =~ (^|[[:space:]])([0-9a-fA-F]{64})([[:space:]]|$) ]]; then
+    checksum="${BASH_REMATCH[2],,}"
+  else
+    die "Go SHA256 响应中未找到有效哈希"
+  fi
   (
     cd "${GO_TMP_DIR}"
     printf '%s  %s\n' "${checksum}" "${archive}" | sha256sum --check --status
