@@ -17,7 +17,9 @@ package main
 import (
 	"flag"
 	"log"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"icloud-hme/internal/account"
 	"icloud-hme/internal/server"
@@ -28,6 +30,11 @@ func main() {
 	dataDir := flag.String("data", "./data", "数据目录 (accounts.json 存放位置)")
 	debug := flag.Bool("debug", false, "调试模式 (启用 Gin 调试日志)")
 	flag.Parse()
+
+	apiKey := strings.TrimSpace(os.Getenv("API_KEY"))
+	if apiKey == "" {
+		log.Fatal("API_KEY 环境变量不能为空")
+	}
 
 	log.Printf("iCloud Hide My Email 服务启动 addr=%s", *addr)
 
@@ -43,7 +50,7 @@ func main() {
 	count := len(mgr.ListAccounts())
 	log.Printf("账号加载完成 count=%d data_dir=%s", count, abs)
 
-	srv := server.New(mgr, *debug)
+	srv := server.New(mgr, *debug, apiKey)
 
 	log.Printf("HTTP 服务就绪 addr=%s", *addr)
 	if err := srv.Run(*addr); err != nil {

@@ -1,0 +1,13 @@
+.git
+.gitignore
+.env
+data
+build
+logs
+*.exe
+*.log
+Dockerfile*
+compose*.yml
+compose*.yaml
+README.md
+API.md

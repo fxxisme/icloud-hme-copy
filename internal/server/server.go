@@ -8,6 +8,7 @@
 package server
 
 import (
+	"crypto/subtle"
 	"net/http"
 	"strconv"
 	"strings"
@@ -25,13 +26,13 @@ type Server struct {
 }
 
 // New 创建 Server。debug 为 true 时启用 Gin 调试日志。
-func New(mgr *account.Manager, debug bool) *Server {
+func New(mgr *account.Manager, debug bool, apiKey string) *Server {
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	s := &Server{mgr: mgr}
 	s.r = gin.Default() // 自带 Logger + Recovery 中间件
-	s.register()
+	s.register(apiKey)
 	return s
 }
 
@@ -43,8 +44,12 @@ func (s *Server) Run(addr string) error {
 // Handler 返回底层 gin 引擎(便于测试)。
 func (s *Server) Handler() http.Handler { return s.r }
 
-func (s *Server) register() {
-	api := s.r.Group("/api")
+func (s *Server) register(apiKey string) {
+	s.r.GET("/healthz", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	})
+
+	api := s.r.Group("/api", apiKeyAuth(apiKey))
 	{
 		// ===== 账号管理 =====
 		api.GET("/accounts", s.listAccounts)
@@ -68,6 +73,29 @@ func (s *Server) register() {
 
 		// ===== 系统 =====
 		api.POST("/reload", s.reloadConfig)
+	}
+}
+
+func apiKeyAuth(expected string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		provided := strings.TrimSpace(c.GetHeader("X-API-Key"))
+		if provided == "" {
+			const prefix = "Bearer "
+			authorization := c.GetHeader("Authorization")
+			if strings.HasPrefix(authorization, prefix) {
+				provided = strings.TrimSpace(strings.TrimPrefix(authorization, prefix))
+			}
+		}
+
+		if expected == "" || subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) != 1 {
+			c.Header("WWW-Authenticate", "Bearer")
+			c.AbortWithStatusJSON(http.StatusUnauthorized, apiResp{
+				Success: false,
+				Message: "未授权: API 密钥无效",
+			})
+			return
+		}
+		c.Next()
 	}
 }
 

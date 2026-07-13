@@ -1,5 +1,19 @@
 # iCloud Hide My Email API 文档
 
+## API 鉴权
+
+除 `/healthz` 外，所有 `/api/*` 请求必须携带部署时配置的 `API_KEY`：
+
+```http
+Authorization: Bearer <API_KEY>
+```
+
+也可以使用：
+
+```http
+X-API-Key: <API_KEY>
+```
+
 ## 概述
 
 HTTP JSON API，所有接口返回统一格式：

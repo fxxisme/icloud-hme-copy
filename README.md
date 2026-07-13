@@ -15,6 +15,65 @@
 
 ## 快速开始
 
+### 运行前：配置 API 鉴权
+
+服务必须通过环境变量配置 `API_KEY`。如果 `API_KEY` 为空或未设置，程序会直接拒绝启动。
+
+```bash
+# 生成一个随机密钥，供当前终端中的本地服务使用
+export API_KEY="$(openssl rand -hex 32)"
+
+# 启动服务
+./icloud-hme
+```
+
+除健康检查 `/healthz` 外，所有 `/api/*` 请求都必须携带相同的密钥。推荐使用 Bearer Token：
+
+```bash
+curl http://127.0.0.1:8081/api/accounts \
+  -H "Authorization: Bearer $API_KEY"
+```
+
+也支持通过 `X-API-Key` 请求头传递：
+
+```bash
+curl http://127.0.0.1:8081/api/accounts \
+  -H "X-API-Key: $API_KEY"
+```
+
+请妥善保管密钥，不要将真实密钥提交到 Git。公网部署必须使用 HTTPS，否则 API 密钥、iCloud 密码和 Cookie 都可能以明文传输。
+
+### Docker Compose 部署
+
+```bash
+# 从示例创建配置文件
+cp .env.example .env
+
+# 生成密钥并写入 .env（Linux）
+API_KEY="$(openssl rand -hex 32)"
+sed -i "s/^API_KEY=.*/API_KEY=${API_KEY}/" .env
+
+# 非 root 容器需要数据目录属于 UID/GID 10001
+sudo install -d -m 700 -o 10001 -g 10001 data
+
+docker compose up -d --build
+docker compose ps
+```
+
+Compose 会自动读取项目根目录的 `.env`。其中：
+
+- `API_KEY`：必填，API 鉴权密钥
+- `BIND_ADDRESS`：宿主机监听地址，默认 `0.0.0.0`
+- `HOST_PORT`：宿主机端口，默认 `8081`
+
+```bash
+# 查看运行状态和日志
+docker compose ps
+docker compose logs -f icloud-hme
+```
+
+Compose 默认将服务发布到 `0.0.0.0:8081`。项目本身不提供 TLS，公网部署必须通过防火墙限制来源，或使用 Nginx/Caddy 提供 HTTPS。通过反向代理部署时，建议将 `BIND_ADDRESS` 改为 `127.0.0.1`。
+
 ### 1. 安装
 
 ```bash
@@ -26,7 +85,7 @@ git clone <your-repo-url>
 cd icloud-hme
 
 # 编译
-go build -o icloud-hme.exe .
+go build -o icloud-hme .
 ```
 
 ### 2. 配置账号
@@ -60,11 +119,11 @@ go build -o icloud-hme.exe .
 ### 3. 启动服务
 
 ```bash
-./icloud-hme.exe
+API_KEY="replace-with-a-random-secret" ./icloud-hme
 
-# 服务默认监听 :8080
-# 可通过环境变量 PORT 修改端口
-PORT=9090 ./icloud-hme.exe
+# 服务默认监听 :8081
+# 使用命令行参数修改监听端口
+API_KEY="replace-with-a-random-secret" ./icloud-hme -addr :9090
 ```
 
 ## API 接口
@@ -443,11 +502,11 @@ icloud-hme/
 # 安装依赖
 go mod download
 
-# 运行 (开发模式，带日志)
-go run main.go
+# 运行（API_KEY 必填；开发模式会输出更详细的日志）
+API_KEY="replace-with-a-random-secret" go run . -debug
 
 # 编译
-go build -o icloud-hme.exe .
+go build -o icloud-hme .
 
 # 交叉编译 (Linux)
 GOOS=linux GOARCH=amd64 go build -o icloud-hme .
@@ -482,18 +541,29 @@ A local management tool for Apple iCloud Hide My Email (HME) aliases, supporting
 
 ### Quick Start
 
+`API_KEY` is required. The service refuses to start when it is empty or missing. Except for `/healthz`, every `/api/*` request must use either `Authorization: Bearer <API_KEY>` or `X-API-Key: <API_KEY>`.
+
 ```bash
-# Build
-go build -o icloud-hme.exe .
+# Build and run locally
+go build -o icloud-hme .
+export API_KEY="$(openssl rand -hex 32)"
+./icloud-hme
 
-# Create accounts.json with your credentials
-# Run
-./icloud-hme.exe
-
-# API endpoints
-# POST /api/create     - Create HME alias
-# GET  /api/inbox      - Read emails
-# GET  /api/aliases    - List aliases
+# Call an authenticated endpoint
+curl http://127.0.0.1:8081/api/accounts \
+  -H "Authorization: Bearer $API_KEY"
 ```
+
+Docker Compose is also supported:
+
+```bash
+cp .env.example .env
+API_KEY="$(openssl rand -hex 32)"
+sed -i "s/^API_KEY=.*/API_KEY=${API_KEY}/" .env
+sudo install -d -m 700 -o 10001 -g 10001 data
+docker compose up -d --build
+```
+
+Compose publishes port `8081` by default. Use HTTPS through a reverse proxy when exposing the service publicly, because API requests may contain iCloud passwords and cookies.
 
 See [API Documentation](#api-接口) for detailed usage.

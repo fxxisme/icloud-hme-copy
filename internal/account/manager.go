@@ -248,6 +248,7 @@ func (m *Manager) ListAccounts() []*Account {
 	for _, acc := range m.accounts {
 		cp := *acc
 		cp.Cookies = nil
+		cp.AppPassword = ""
 		out = append(out, &cp)
 	}
 	return out
