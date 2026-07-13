@@ -224,6 +224,24 @@ Content-Type: application/json
 
 ---
 
+### Cookie 文件导入
+
+用于脚本通过 multipart 表单导入完整 Cookie Header，避免 JSON 转义问题。首次创建传 `name`，更新已有账号传 `id`。
+
+```http
+POST /api/accounts/import-cookie
+Authorization: Bearer <API_KEY>
+Content-Type: multipart/form-data
+
+cookies=<完整 Cookie Header>
+name=主号
+host=icloud.com
+```
+
+项目提供的 `deploy/set-cookie.sh` 已封装该接口。只有 Cookie 校验成功时才返回 2xx。
+
+---
+
 ### 5. 账号密码登录（获取 Cookie）
 
 ```http

@@ -1,44 +1,23 @@
 {
-  "accounts": [
-    {
+  "accounts": {
+    "acc_1": {
       "id": "acc_1",
       "name": "主号",
-      "host": "imap.mail.me.com",
+      "real_email": "",
+      "icloud_email": "your_email@icloud.com",
+      "host": "icloud.com",
       "proxy": "",
-      "cookies": [
-        {
-          "domain": ".icloud.com",
-          "expirationDate": 1735689600,
-          "hostOnly": false,
-          "httpOnly": true,
-          "name": "x-apple-session-token",
-          "path": "/",
-          "sameSite": "unspecified",
-          "secure": true,
-          "session": false,
-          "storeId": "0",
-          "value": "YOUR_SESSION_TOKEN_HERE"
-        },
-        {
-          "domain": ".icloud.com",
-          "expirationDate": 1735689600,
-          "hostOnly": false,
-          "httpOnly": true,
-          "name": "X-APPLE-WEBAUTH-TOKEN",
-          "path": "/",
-          "sameSite": "unspecified",
-          "secure": true,
-          "session": false,
-          "storeId": "0",
-          "value": "YOUR_WEBAUTH_TOKEN_HERE"
-        }
-      ],
-      "app_passwords": [
-        {
-          "icloud_email": "your_email@icloud.com",
-          "password": "xxxx-xxxx-xxxx-xxxx"
-        }
-      ]
+      "cookies": {
+        "x-apple-session-token": "YOUR_SESSION_TOKEN_HERE",
+        "X-APPLE-WEBAUTH-TOKEN": "YOUR_WEBAUTH_TOKEN_HERE"
+      },
+      "app_password": "xxxx-xxxx-xxxx-xxxx",
+      "status": "active",
+      "alias_total": 0,
+      "alias_active": 0,
+      "last_validated": "",
+      "created_at": ""
     }
-  ]
+  },
+  "updated_at": ""
 }

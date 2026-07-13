@@ -65,6 +65,24 @@ bash deploy/install.sh
 
 系统外部只会安装 `/etc/systemd/system/icloud-hme.service`。如果存在旧版部署目录 `/var/lib/icloud-hme`、`/etc/icloud-hme`，或仓库内已有 `data/accounts.json`，首次安装时会自动迁移。重复运行安装脚本会更新程序，并保留现有数据和 API Key。
 
+配置 Cookie 时不需要手写 JSON。复制示例文件，只在 `cookie.txt` 中粘贴浏览器请求头里的完整 Cookie，然后运行脚本：
+
+```bash
+cp deploy/cookie.txt.example deploy/cookie.txt
+nano deploy/cookie.txt
+./deploy/set-cookie.sh             # 创建“主号”
+# ./deploy/set-cookie.sh "其他名称" # 创建其他账号
+```
+
+Cookie 失效后，通过账号 ID 更新：
+
+```bash
+nano deploy/cookie.txt
+./deploy/set-cookie.sh --id acc_xxxxxxxx
+```
+
+`deploy/cookie.txt` 已被 Git 忽略并限制为 `0600` 权限；导入成功后脚本会自动清空，失败时保留内容供排查。
+
 systemd 服务默认监听 `0.0.0.0:8081`，部署后可以直接通过服务器 IP 测试。项目本身不提供 TLS，公网使用时必须通过防火墙限制 8081 端口来源，或改为监听 `127.0.0.1:8081` 并通过 Nginx/Caddy 提供 HTTPS。查看日志和健康状态：
 
 ```bash
@@ -135,31 +153,15 @@ go build -o icloud-hme .
 
 ### 2. 配置账号
 
-在项目根目录创建 `accounts.json`:
+服务运行后推荐通过 Cookie 导入脚本配置账号：
 
-```json
-{
-  "accounts": [
-    {
-      "id": "acc_1",
-      "name": "主号",
-      "cookies": [
-        {
-          "domain": ".icloud.com",
-          "name": "x-apple-session-token",
-          "value": "YOUR_SESSION_TOKEN_HERE"
-        }
-      ],
-      "app_passwords": [
-        {
-          "icloud_email": "your_email@icloud.com",
-          "password": "YOUR_APP_PASSWORD_HERE"
-        }
-      ]
-    }
-  ]
-}
+```bash
+cp deploy/cookie.txt.example deploy/cookie.txt
+nano deploy/cookie.txt
+./deploy/set-cookie.sh
 ```
+
+程序会自动校验并持久化账号。`accounts.json.template` 仅用于了解当前存储结构，不建议在服务运行时直接编辑数据文件。
 
 ### 3. 启动服务
 
@@ -605,6 +607,11 @@ For a single x86_64 Linux server, the recommended deployment is a Linux binary m
 git clone https://github.com/fxxisme/icloud-hme-copy.git
 cd icloud-hme-copy
 bash deploy/install.sh
+
+# Paste a complete Cookie request header into this file, then import it
+cp deploy/cookie.txt.example deploy/cookie.txt
+nano deploy/cookie.txt
+./deploy/set-cookie.sh
 
 # Keep data and configuration
 bash deploy/uninstall.sh

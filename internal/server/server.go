@@ -54,6 +54,7 @@ func (s *Server) register(apiKey string) {
 		// ===== 账号管理 =====
 		api.GET("/accounts", s.listAccounts)
 		api.POST("/accounts", s.addAccount)
+		api.POST("/accounts/import-cookie", s.importCookie)
 		api.DELETE("/accounts/:id", s.removeAccount)
 		api.POST("/accounts/:id/password", s.setAppPassword)
 		api.PUT("/accounts/:id/cookies", s.updateCookies)
@@ -273,6 +274,66 @@ func (s *Server) addAccount(c *gin.Context) {
 		return
 	}
 	// 返回时脱敏
+	acc.Cookies = nil
+	c.JSON(http.StatusCreated, apiResp{Success: true, Data: acc})
+}
+
+func (s *Server) importCookie(c *gin.Context) {
+	const maxFormSize = 1 << 20
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxFormSize)
+	if err := c.Request.ParseMultipartForm(maxFormSize); err != nil {
+		fail(c, http.StatusBadRequest, "Cookie 表单无效或超过 1 MiB")
+		return
+	}
+
+	cookieInput := strings.TrimSpace(c.PostForm("cookies"))
+	if cookieInput == "" {
+		fail(c, http.StatusBadRequest, "cookies 不能为空")
+		return
+	}
+
+	if id := strings.TrimSpace(c.PostForm("id")); id != "" {
+		cookies, err := account.ParseCookieInput(cookieInput)
+		if err != nil {
+			fail(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		if err := s.mgr.UpdateCookies(id, cookies); err != nil {
+			fail(c, http.StatusBadRequest, err.Error())
+			return
+		}
+		updated, _ := s.mgr.GetAccount(id)
+		if updated == nil || updated.Status != "active" {
+			message := "Cookie 校验未通过"
+			if updated != nil && updated.LastError != "" {
+				message = updated.LastError
+			}
+			fail(c, http.StatusBadRequest, message)
+			return
+		}
+		ok(c, gin.H{"id": id, "cookies_count": len(cookies)})
+		return
+	}
+
+	name := strings.TrimSpace(c.PostForm("name"))
+	if name == "" {
+		fail(c, http.StatusBadRequest, "name 不能为空")
+		return
+	}
+	acc, err := s.mgr.AddAccount(name, cookieInput, c.PostForm("host"), "")
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if acc.Status != "active" {
+		s.mgr.RemoveAccount(acc.ID)
+		message := acc.LastError
+		if message == "" {
+			message = "Cookie 校验未通过"
+		}
+		fail(c, http.StatusBadRequest, message)
+		return
+	}
 	acc.Cookies = nil
 	c.JSON(http.StatusCreated, apiResp{Success: true, Data: acc})
 }

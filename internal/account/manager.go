@@ -140,6 +140,10 @@ func ParseCookieInput(raw string) (map[string]string, error) {
 		}
 		name := strings.TrimSpace(part[:idx])
 		value := strings.TrimSpace(part[idx+1:])
+		if len(value) >= 2 && ((value[0] == '"' && value[len(value)-1] == '"') ||
+			(value[0] == '\'' && value[len(value)-1] == '\'')) {
+			value = value[1 : len(value)-1]
+		}
 		if name != "" {
 			cookies[name] = value
 		}
