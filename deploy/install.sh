@@ -15,6 +15,9 @@ LEGACY_DATA_DIR="/var/lib/${SERVICE_NAME}"
 LEGACY_CONFIG_DIR="/etc/${SERVICE_NAME}"
 MIGRATED_DATA=false
 MIGRATED_CONFIG=false
+MIN_GO_MAJOR=1
+MIN_GO_MINOR=26
+GO_TMP_DIR=""
 
 log() {
   printf '==> %s\n' "$*"
@@ -29,11 +32,69 @@ require_command() {
   command -v "$1" >/dev/null 2>&1 || die "缺少命令: $1"
 }
 
+cleanup() {
+  if [[ -n "${GO_TMP_DIR}" && -d "${GO_TMP_DIR}" ]]; then
+    rm -rf "${GO_TMP_DIR}"
+  fi
+}
+
+go_version_supported() {
+  local version="${1#go}"
+  if [[ ! "${version}" =~ ^([0-9]+)\.([0-9]+) ]]; then
+    return 1
+  fi
+
+  local major="${BASH_REMATCH[1]}"
+  local minor="${BASH_REMATCH[2]}"
+  (( major > MIN_GO_MAJOR || (major == MIN_GO_MAJOR && minor >= MIN_GO_MINOR) ))
+}
+
+install_go() {
+  local version_response go_version archive checksum
+
+  for command_name in tar sha256sum mktemp; do
+    require_command "${command_name}"
+  done
+
+  log "获取 Go 官方最新稳定版本"
+  version_response="$(curl --fail --silent --show-error --location \
+    'https://go.dev/VERSION?m=text')"
+  go_version="${version_response%%$'\n'*}"
+  go_version_supported "${go_version}" || \
+    die "Go 官方最新版本不满足 ${MIN_GO_MAJOR}.${MIN_GO_MINOR} 要求: ${go_version}"
+
+  archive="${go_version}.linux-amd64.tar.gz"
+  GO_TMP_DIR="$(mktemp -d)"
+
+  log "下载并校验 ${go_version}"
+  curl --fail --silent --show-error --location --retry 3 \
+    "https://go.dev/dl/${archive}" -o "${GO_TMP_DIR}/${archive}"
+  checksum="$(curl --fail --silent --show-error --location --retry 3 \
+    "https://go.dev/dl/${archive}.sha256" | tr -d '[:space:]')"
+  [[ "${checksum}" =~ ^[0-9a-f]{64}$ ]] || die "Go SHA256 格式无效"
+  (
+    cd "${GO_TMP_DIR}"
+    printf '%s  %s\n' "${checksum}" "${archive}" | sha256sum --check --status
+  ) || die "Go 安装包 SHA256 校验失败"
+
+  log "安装 ${go_version} 到 /usr/local/go"
+  "${SUDO[@]}" rm -rf /usr/local/go
+  "${SUDO[@]}" install -d -m 0755 /usr/local /usr/local/bin
+  "${SUDO[@]}" tar -C /usr/local -xzf "${GO_TMP_DIR}/${archive}"
+  "${SUDO[@]}" ln -sfn /usr/local/go/bin/go /usr/local/bin/go
+  export PATH="/usr/local/go/bin:${PATH}"
+  hash -r
+
+  go_version_supported "$(go env GOVERSION)" || die "Go 安装完成但版本检查失败"
+}
+
+trap cleanup EXIT
+
 if [[ "$(uname -m)" != "x86_64" ]]; then
   die "此脚本仅支持 x86_64 服务器，当前架构: $(uname -m)"
 fi
 
-for command_name in go systemctl openssl install useradd getent curl; do
+for command_name in systemctl openssl install useradd getent curl; do
   require_command "${command_name}"
 done
 
@@ -43,6 +104,16 @@ else
   require_command sudo
   SUDO=(sudo)
   "${SUDO[@]}" -v
+fi
+
+if ! command -v go >/dev/null 2>&1; then
+  log "未检测到 Go，准备自动安装"
+  install_go
+elif ! go_version_supported "$(go env GOVERSION 2>/dev/null || true)"; then
+  log "当前 Go 版本低于 ${MIN_GO_MAJOR}.${MIN_GO_MINOR}，准备自动升级"
+  install_go
+else
+  log "使用现有 $(go env GOVERSION)"
 fi
 
 log "编译 Linux amd64 二进制"

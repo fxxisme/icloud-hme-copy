@@ -45,7 +45,7 @@ curl http://127.0.0.1:8081/api/accounts \
 
 ### 推荐：Linux 二进制 + systemd
 
-单服务器部署推荐 SSH 登录服务器后拉取代码，通过安装脚本编译 Linux 二进制并交给 systemd 托管，可获得开机自启、异常重启和统一日志管理。脚本当前支持 `x86_64`，服务器需安装 Git、Go 1.26+、OpenSSL、curl 和 systemd。从 Docker 迁移时，先在原项目目录执行 `docker compose down`，避免占用 8081 端口。
+单服务器部署推荐 SSH 登录服务器后拉取代码，通过安装脚本编译 Linux 二进制并交给 systemd 托管，可获得开机自启、异常重启和统一日志管理。脚本当前支持 `x86_64`，服务器需安装 Git、OpenSSL、curl、tar、sha256sum 和 systemd。从 Docker 迁移时，先在原项目目录执行 `docker compose down`，避免占用 8081 端口。
 
 ```bash
 # 在 x86_64 服务器执行
@@ -54,7 +54,7 @@ cd icloud-hme-copy
 bash deploy/install.sh
 ```
 
-脚本会创建低权限用户，并将运行文件集中到 `/opt/icloud-hme`：
+如果系统未安装 Go 或版本低于 `1.26`，脚本会从 `go.dev` 下载最新稳定版，校验 SHA256 后安装到 `/usr/local/go`；已有合格版本不会被修改。随后脚本会创建低权限用户，并将运行文件集中到 `/opt/icloud-hme`：
 
 ```text
 /opt/icloud-hme/
@@ -599,7 +599,7 @@ curl http://127.0.0.1:8081/api/accounts \
   -H "Authorization: Bearer $API_KEY"
 ```
 
-For a single x86_64 Linux server, the recommended deployment is a Linux binary managed by systemd. SSH into the server, clone the repository, and run the installer. Runtime files are kept under `/opt/icloud-hme`; only the systemd unit is installed outside that directory. Existing API keys and account data are preserved when the installer is run again.
+For a single x86_64 Linux server, the recommended deployment is a Linux binary managed by systemd. SSH into the server, clone the repository, and run the installer. If Go 1.26+ is unavailable, the script downloads the latest stable Go release from `go.dev`, verifies its SHA256 checksum, and installs it under `/usr/local/go`. Runtime files are kept under `/opt/icloud-hme`; only the systemd unit is installed outside that directory. Existing API keys and account data are preserved when the installer is run again.
 
 ```bash
 git clone https://github.com/fxxisme/icloud-hme-copy.git
