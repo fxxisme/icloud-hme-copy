@@ -1,0 +1,23 @@
+[Unit]
+Description=iCloud Hide My Email service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=icloud-hme
+Group=icloud-hme
+EnvironmentFile=/etc/icloud-hme/icloud-hme.env
+WorkingDirectory=/var/lib/icloud-hme
+ExecStart=/opt/icloud-hme/icloud-hme -addr 127.0.0.1:8081 -data /var/lib/icloud-hme
+Restart=on-failure
+RestartSec=5s
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/icloud-hme
+
+[Install]
+WantedBy=multi-user.target

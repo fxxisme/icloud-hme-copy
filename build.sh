@@ -1,20 +1,22 @@
 #!/bin/bash
-# 构建 Linux amd64 最小化二进制
+# 构建 Linux 最小化二进制（默认 amd64，可通过 GOARCH 覆盖）
 #
-# 用法: ./build.sh
+# 用法: bash build.sh
+#      GOARCH=arm64 bash build.sh
 # 输出: build/icloud-hme
 
 set -e
 
 OUTPUT_DIR="build"
 BINARY_NAME="icloud-hme"
+TARGET_ARCH="${GOARCH:-amd64}"
 
 echo "==> 清理旧的构建文件"
 rm -rf "$OUTPUT_DIR"
 mkdir -p "$OUTPUT_DIR"
 
-echo "==> 构建 Linux amd64 最小化二进制"
-CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+echo "==> 构建 Linux ${TARGET_ARCH} 最小化二进制"
+CGO_ENABLED=0 GOOS=linux GOARCH="${TARGET_ARCH}" \
   go build -trimpath \
     -ldflags="-s -w -buildid=" \
     -gcflags="-l=4" \

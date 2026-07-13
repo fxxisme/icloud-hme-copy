@@ -43,7 +43,68 @@ curl http://127.0.0.1:8081/api/accounts \
 
 请妥善保管密钥，不要将真实密钥提交到 Git。公网部署必须使用 HTTPS，否则 API 密钥、iCloud 密码和 Cookie 都可能以明文传输。
 
-### Docker Compose 部署
+### 推荐：Linux 二进制 + systemd
+
+单服务器部署推荐在本地或 CI 编译 Linux 二进制，再由服务器上的 systemd 托管。服务器不需要安装 Go 或 Docker，并可获得开机自启、异常重启和统一日志管理。
+
+先确认服务器架构：
+
+```bash
+uname -m
+# x86_64 对应 amd64，aarch64 对应 arm64
+```
+
+在本地或 CI 构建并上传：
+
+```bash
+# x86_64 服务器（默认）
+bash build.sh
+
+# ARM64 服务器改用：GOARCH=arm64 bash build.sh
+scp build/icloud-hme deploy/icloud-hme.service root@your-server:/tmp/
+```
+
+以下安装命令适用于使用 systemd 的常见 Linux 发行版：
+
+```bash
+# 在服务器执行：创建低权限运行用户和目录
+sudo useradd --system --user-group --home-dir /var/lib/icloud-hme \
+  --shell /usr/sbin/nologin icloud-hme
+sudo install -d -m 0750 -o icloud-hme -g icloud-hme \
+  /opt/icloud-hme /var/lib/icloud-hme
+sudo install -m 0755 /tmp/icloud-hme /opt/icloud-hme/icloud-hme
+
+# 安装服务和仅 root 可读的 API 密钥
+sudo install -D -m 0644 /tmp/icloud-hme.service \
+  /etc/systemd/system/icloud-hme.service
+sudo install -d -m 0750 /etc/icloud-hme
+printf 'API_KEY=%s\n' "$(openssl rand -hex 32)" | \
+  sudo tee /etc/icloud-hme/icloud-hme.env >/dev/null
+sudo chmod 0600 /etc/icloud-hme/icloud-hme.env
+
+# 启动并设置开机自启
+sudo systemctl daemon-reload
+sudo systemctl enable --now icloud-hme
+sudo systemctl status icloud-hme
+```
+
+默认只监听 `127.0.0.1:8081`，适合通过 Nginx/Caddy 提供 HTTPS。查看日志和健康状态：
+
+```bash
+sudo journalctl -u icloud-hme -f
+curl http://127.0.0.1:8081/healthz
+```
+
+升级时重新构建并上传二进制，然后执行：
+
+```bash
+sudo install -m 0755 /tmp/icloud-hme /opt/icloud-hme/icloud-hme
+sudo systemctl restart icloud-hme
+```
+
+### 可选：Docker Compose 部署
+
+需要容器隔离或统一镜像发布时可以使用 Docker。低配置服务器首次执行 `--build` 可能较慢；生产环境更适合由本地或 CI 构建并推送镜像，服务器只拉取并启动。
 
 ```bash
 # 从示例创建配置文件
@@ -554,7 +615,15 @@ curl http://127.0.0.1:8081/api/accounts \
   -H "Authorization: Bearer $API_KEY"
 ```
 
-Docker Compose is also supported:
+For a single Linux server, the recommended deployment is a Linux binary managed by systemd. Build it locally or in CI, then install the included `deploy/icloud-hme.service` unit. The service runs as a dedicated user, listens on `127.0.0.1:8081`, restarts on failure, and stores data in `/var/lib/icloud-hme`.
+
+```bash
+# Build for x86_64; use GOARCH=arm64 for an ARM64 server
+bash build.sh
+scp build/icloud-hme deploy/icloud-hme.service root@your-server:/tmp/
+```
+
+Docker Compose is also supported when container isolation or image-based releases are preferred:
 
 ```bash
 cp .env.example .env
