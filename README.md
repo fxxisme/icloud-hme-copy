@@ -54,7 +54,16 @@ cd icloud-hme-copy
 bash deploy/install.sh
 ```
 
-脚本会创建低权限用户，安装程序到 `/opt/icloud-hme`，将数据保存到 `/var/lib/icloud-hme`，并把 API Key 保存到 `/etc/icloud-hme/icloud-hme.env`。如果仓库内已有 `data/accounts.json`，首次安装时会自动迁移。重复运行安装脚本会更新程序，并保留现有数据和 API Key。
+脚本会创建低权限用户，并将运行文件集中到 `/opt/icloud-hme`：
+
+```text
+/opt/icloud-hme/
+├── bin/icloud-hme
+├── data/accounts.json
+└── config/icloud-hme.env
+```
+
+系统外部只会安装 `/etc/systemd/system/icloud-hme.service`。如果存在旧版部署目录 `/var/lib/icloud-hme`、`/etc/icloud-hme`，或仓库内已有 `data/accounts.json`，首次安装时会自动迁移。重复运行安装脚本会更新程序，并保留现有数据和 API Key。
 
 默认只监听 `127.0.0.1:8081`，适合通过 Nginx/Caddy 提供 HTTPS。查看日志和健康状态：
 
@@ -590,7 +599,7 @@ curl http://127.0.0.1:8081/api/accounts \
   -H "Authorization: Bearer $API_KEY"
 ```
 
-For a single x86_64 Linux server, the recommended deployment is a Linux binary managed by systemd. SSH into the server, clone the repository, and run the installer. It preserves the API key and account data when run again.
+For a single x86_64 Linux server, the recommended deployment is a Linux binary managed by systemd. SSH into the server, clone the repository, and run the installer. Runtime files are kept under `/opt/icloud-hme`; only the systemd unit is installed outside that directory. Existing API keys and account data are preserved when the installer is run again.
 
 ```bash
 git clone https://github.com/fxxisme/icloud-hme-copy.git

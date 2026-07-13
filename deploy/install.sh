@@ -6,10 +6,15 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 SERVICE_NAME="icloud-hme"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-INSTALL_DIR="/opt/${SERVICE_NAME}"
-DATA_DIR="/var/lib/${SERVICE_NAME}"
-CONFIG_DIR="/etc/${SERVICE_NAME}"
+BASE_DIR="/opt/${SERVICE_NAME}"
+BIN_DIR="${BASE_DIR}/bin"
+DATA_DIR="${BASE_DIR}/data"
+CONFIG_DIR="${BASE_DIR}/config"
 ENV_FILE="${CONFIG_DIR}/${SERVICE_NAME}.env"
+LEGACY_DATA_DIR="/var/lib/${SERVICE_NAME}"
+LEGACY_CONFIG_DIR="/etc/${SERVICE_NAME}"
+MIGRATED_DATA=false
+MIGRATED_CONFIG=false
 
 log() {
   printf '==> %s\n' "$*"
@@ -62,28 +67,45 @@ if ! id "${SERVICE_NAME}" >/dev/null 2>&1; then
   fi
 fi
 
-"${SUDO[@]}" install -d -m 0750 -o "${SERVICE_NAME}" -g "${SERVICE_NAME}" \
-  "${INSTALL_DIR}" "${DATA_DIR}"
+"${SUDO[@]}" install -d -m 0755 "${BASE_DIR}" "${BIN_DIR}"
+"${SUDO[@]}" install -d -m 0750 -o "${SERVICE_NAME}" -g "${SERVICE_NAME}" "${DATA_DIR}"
+"${SUDO[@]}" install -d -m 0750 "${CONFIG_DIR}"
+"${SUDO[@]}" chown root:root "${BASE_DIR}" "${BIN_DIR}" "${CONFIG_DIR}"
+"${SUDO[@]}" chmod 0755 "${BASE_DIR}" "${BIN_DIR}"
+"${SUDO[@]}" chmod 0750 "${CONFIG_DIR}"
 "${SUDO[@]}" chown -R "${SERVICE_NAME}:${SERVICE_NAME}" "${DATA_DIR}"
 
-if "${SUDO[@]}" test -f "${PROJECT_ROOT}/data/accounts.json" && \
-    ! "${SUDO[@]}" test -e "${DATA_DIR}/accounts.json"; then
-  log "迁移现有 data/accounts.json"
-  "${SUDO[@]}" install -m 0600 -o "${SERVICE_NAME}" -g "${SERVICE_NAME}" \
-    "${PROJECT_ROOT}/data/accounts.json" "${DATA_DIR}/accounts.json"
+"${SUDO[@]}" systemctl stop "${SERVICE_NAME}.service" 2>/dev/null || true
+
+if ! "${SUDO[@]}" test -e "${DATA_DIR}/accounts.json"; then
+  if "${SUDO[@]}" test -f "${LEGACY_DATA_DIR}/accounts.json"; then
+    log "迁移 ${LEGACY_DATA_DIR}/accounts.json"
+    "${SUDO[@]}" install -m 0600 -o "${SERVICE_NAME}" -g "${SERVICE_NAME}" \
+      "${LEGACY_DATA_DIR}/accounts.json" "${DATA_DIR}/accounts.json"
+    MIGRATED_DATA=true
+  elif "${SUDO[@]}" test -f "${PROJECT_ROOT}/data/accounts.json"; then
+    log "迁移仓库内的 data/accounts.json"
+    "${SUDO[@]}" install -m 0600 -o "${SERVICE_NAME}" -g "${SERVICE_NAME}" \
+      "${PROJECT_ROOT}/data/accounts.json" "${DATA_DIR}/accounts.json"
+  fi
 fi
 
 log "安装程序和 systemd 服务"
-"${SUDO[@]}" systemctl stop "${SERVICE_NAME}.service" 2>/dev/null || true
-"${SUDO[@]}" install -m 0755 "${BINARY}" "${INSTALL_DIR}/${SERVICE_NAME}"
+"${SUDO[@]}" install -m 0755 "${BINARY}" "${BIN_DIR}/${SERVICE_NAME}"
 "${SUDO[@]}" install -m 0644 "${SCRIPT_DIR}/${SERVICE_NAME}.service" "${SERVICE_FILE}"
-"${SUDO[@]}" install -d -m 0750 "${CONFIG_DIR}"
 
 if ! "${SUDO[@]}" test -f "${ENV_FILE}"; then
-  API_KEY="$(openssl rand -hex 32)"
-  printf 'API_KEY=%s\n' "${API_KEY}" | "${SUDO[@]}" tee "${ENV_FILE}" >/dev/null
-  log "已生成 API Key，可执行以下命令查看"
-  printf '    sudo cat %s\n' "${ENV_FILE}"
+  if "${SUDO[@]}" test -f "${LEGACY_CONFIG_DIR}/${SERVICE_NAME}.env"; then
+    log "迁移 ${LEGACY_CONFIG_DIR}/${SERVICE_NAME}.env"
+    "${SUDO[@]}" install -m 0600 \
+      "${LEGACY_CONFIG_DIR}/${SERVICE_NAME}.env" "${ENV_FILE}"
+    MIGRATED_CONFIG=true
+  else
+    API_KEY="$(openssl rand -hex 32)"
+    printf 'API_KEY=%s\n' "${API_KEY}" | "${SUDO[@]}" tee "${ENV_FILE}" >/dev/null
+    log "已生成 API Key，可执行以下命令查看"
+    printf '    sudo cat %s\n' "${ENV_FILE}"
+  fi
 else
   log "保留现有 API Key: ${ENV_FILE}"
 fi
@@ -106,6 +128,16 @@ if [[ "${HEALTHY}" != true ]]; then
   "${SUDO[@]}" journalctl -u "${SERVICE_NAME}.service" -n 50 --no-pager || true
   die "服务健康检查失败，请确认 8081 端口未被 Docker 或其他程序占用"
 fi
+
+if [[ "${MIGRATED_DATA}" == true ]]; then
+  "${SUDO[@]}" rm -f "${LEGACY_DATA_DIR}/accounts.json"
+  "${SUDO[@]}" rmdir "${LEGACY_DATA_DIR}" 2>/dev/null || true
+fi
+if [[ "${MIGRATED_CONFIG}" == true ]]; then
+  "${SUDO[@]}" rm -f "${LEGACY_CONFIG_DIR}/${SERVICE_NAME}.env"
+  "${SUDO[@]}" rmdir "${LEGACY_CONFIG_DIR}" 2>/dev/null || true
+fi
+"${SUDO[@]}" rm -f "${BASE_DIR}/${SERVICE_NAME}"
 
 log "部署完成"
 printf '    状态: sudo systemctl status %s\n' "${SERVICE_NAME}"

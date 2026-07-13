@@ -7,9 +7,9 @@ Wants=network-online.target
 Type=simple
 User=icloud-hme
 Group=icloud-hme
-EnvironmentFile=/etc/icloud-hme/icloud-hme.env
-WorkingDirectory=/var/lib/icloud-hme
-ExecStart=/opt/icloud-hme/icloud-hme -addr 127.0.0.1:8081 -data /var/lib/icloud-hme
+EnvironmentFile=/opt/icloud-hme/config/icloud-hme.env
+WorkingDirectory=/opt/icloud-hme/data
+ExecStart=/opt/icloud-hme/bin/icloud-hme -addr 127.0.0.1:8081 -data /opt/icloud-hme/data
 Restart=on-failure
 RestartSec=5s
 
@@ -17,7 +17,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectHome=true
 ProtectSystem=strict
-ReadWritePaths=/var/lib/icloud-hme
+ReadWritePaths=/opt/icloud-hme/data
 
 [Install]
 WantedBy=multi-user.target
