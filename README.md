@@ -65,7 +65,7 @@ bash deploy/install.sh
 
 系统外部只会安装 `/etc/systemd/system/icloud-hme.service`。如果存在旧版部署目录 `/var/lib/icloud-hme`、`/etc/icloud-hme`，或仓库内已有 `data/accounts.json`，首次安装时会自动迁移。重复运行安装脚本会更新程序，并保留现有数据和 API Key。
 
-默认只监听 `127.0.0.1:8081`，适合通过 Nginx/Caddy 提供 HTTPS。查看日志和健康状态：
+systemd 服务默认监听 `0.0.0.0:8081`，部署后可以直接通过服务器 IP 测试。项目本身不提供 TLS，公网使用时必须通过防火墙限制 8081 端口来源，或改为监听 `127.0.0.1:8081` 并通过 Nginx/Caddy 提供 HTTPS。查看日志和健康状态：
 
 ```bash
 sudo journalctl -u icloud-hme -f

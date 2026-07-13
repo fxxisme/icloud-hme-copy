@@ -9,7 +9,7 @@ User=icloud-hme
 Group=icloud-hme
 EnvironmentFile=/opt/icloud-hme/config/icloud-hme.env
 WorkingDirectory=/opt/icloud-hme/data
-ExecStart=/opt/icloud-hme/bin/icloud-hme -addr 127.0.0.1:8081 -data /opt/icloud-hme/data
+ExecStart=/opt/icloud-hme/bin/icloud-hme -addr 0.0.0.0:8081 -data /opt/icloud-hme/data
 Restart=on-failure
 RestartSec=5s
 
