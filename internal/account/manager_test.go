@@ -25,6 +25,24 @@ func TestParseCookieInputHeaderPreservesValueRepresentation(t *testing.T) {
 	}
 }
 
+func TestValidateHMERequiredCookiesReportsMissingNames(t *testing.T) {
+	cookies := map[string]string{
+		"X-APPLE-WEBAUTH-TOKEN":      "token",
+		"X-APPLE-WEBAUTH-USER":       "user",
+		"X-APPLE-WEBAUTH-HSA-TRUST":  "trust",
+		"X-APPLE-DS-WEB-SESSION-TOKEN": "",
+	}
+
+	err := ValidateHMERequiredCookies(cookies)
+	if err == nil {
+		t.Fatal("ValidateHMERequiredCookies() error = nil, want missing cookie error")
+	}
+	want := "缺少必需 Cookie: X-APPLE-DS-WEB-SESSION-TOKEN"
+	if err.Error() != want {
+		t.Errorf("error = %q, want %q", err.Error(), want)
+	}
+}
+
 func TestFinalizeCookieImportNormalizesNameAndRemovesDuplicates(t *testing.T) {
 	manager := &Manager{
 		accounts: map[string]*Account{

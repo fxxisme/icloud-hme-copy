@@ -228,14 +228,14 @@ Content-Type: application/json
 
 ### Cookie 文件导入
 
-用于脚本通过 multipart 表单导入完整 Cookie Header，避免 JSON 转义问题。首次创建时 `name` 仅为兼容字段，校验后会自动改为 `real_email` 的邮箱前缀；更新已有账号时传 `id`。
+用于脚本通过 multipart 表单导入 Cookie JSON 对象。Cookie 值应来自浏览器 `Application → Cookies`，值本身不含额外引号或转义字符。首次创建时 `name` 仅为兼容字段，校验后会自动改为 `real_email` 的邮箱前缀；更新已有账号时传 `id`。
 
 ```http
 POST /api/accounts/import-cookie
 Authorization: Bearer <API_KEY>
 Content-Type: multipart/form-data
 
-cookies=<完整 Cookie Header>
+cookies=<Cookie JSON 对象>
 name=主号
 host=icloud.com
 ```

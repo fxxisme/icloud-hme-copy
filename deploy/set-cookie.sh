@@ -47,12 +47,12 @@ done
 
 if [[ ! -f "${COOKIE_FILE}" ]]; then
   install -m 0600 "${SCRIPT_DIR}/cookie.txt.example" "${COOKIE_FILE}"
-  die "已创建 ${COOKIE_FILE}，请粘贴完整 Cookie 后重新运行"
+  die "已创建 ${COOKIE_FILE}，请填写 Cookie JSON 后重新运行"
 fi
 chmod 0600 "${COOKIE_FILE}"
 [[ -s "${COOKIE_FILE}" ]] || die "Cookie 文件为空: ${COOKIE_FILE}"
-if grep -q '^PASTE_FULL_COOKIE_HEADER_HERE' "${COOKIE_FILE}"; then
-  die "请先将完整 Cookie 粘贴到 ${COOKIE_FILE}"
+if grep -q 'YOUR_.*_HERE' "${COOKIE_FILE}"; then
+  die "请先将 Application → Cookies 导出的真实值填入 ${COOKIE_FILE}"
 fi
 
 if (( EUID == 0 )); then

@@ -65,7 +65,7 @@ bash deploy/install.sh
 
 系统外部只会安装 `/etc/systemd/system/icloud-hme.service`。如果存在旧版部署目录 `/var/lib/icloud-hme`、`/etc/icloud-hme`，或仓库内已有 `data/accounts.json`，首次安装时会自动迁移。重复运行安装脚本会更新程序，并保留现有数据和 API Key。
 
-配置 Cookie 时不需要手写 JSON。复制示例文件，只在 `cookie.txt` 中粘贴浏览器请求头里的完整 Cookie，然后运行脚本：
+配置 Cookie 时不需要调用 API。按照原项目要求，在浏览器 F12 的 `Application → Cookies` 中取得 Cookie 值，以 JSON 键值对象填写 `cookie.txt`；值本身不要带多余引号或转义字符。四个必需键已写入示例文件：
 
 ```bash
 cp deploy/cookie.txt.example deploy/cookie.txt

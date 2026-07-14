@@ -87,9 +87,11 @@ func NewClient(cookies map[string]string, host, proxy string, verbose bool) (*Cl
 	if host == "" {
 		host = "icloud.com"
 	}
+	jar := tls_client.NewCookieJar()
 	options := []tls_client.HttpClientOption{
 		tls_client.WithTimeoutSeconds(30),
 		tls_client.WithClientProfile(profiles.Chrome_146),
+		tls_client.WithCookieJar(jar),
 		tls_client.WithNotFollowRedirects(),
 	}
 
@@ -112,6 +114,26 @@ func NewClient(cookies map[string]string, host, proxy string, verbose bool) (*Cl
 		clientID: uuid.New().String(),
 	}
 
+	// 与原项目保持一致：将无额外引号的 Cookie 值写入相关域名的 Jar。
+	if len(cookies) > 0 {
+		domains := []string{
+			"https://www.icloud.com",
+			"https://www.icloud.com.cn",
+			"https://setup.icloud.com",
+			"https://setup.icloud.com.cn",
+			"https://" + c.Host,
+		}
+		for _, domain := range domains {
+			u, _ := url.Parse(domain)
+			httpCookies := make([]*http.Cookie, 0, len(cookies))
+			for name, value := range cookies {
+				httpCookies = append(httpCookies, &http.Cookie{
+					Name: name, Value: value, Path: "/",
+				})
+			}
+			jar.SetCookies(u, httpCookies)
+		}
+	}
 	return c, nil
 }
 
@@ -139,7 +161,12 @@ func buildCookieHeader(cookies map[string]string) string {
 
 	parts := make([]string, 0, len(names))
 	for _, name := range names {
-		parts = append(parts, name+"="+cookies[name])
+		value := cookies[name]
+		if strings.HasPrefix(value, `"`) {
+			parts = append(parts, name+"="+value)
+		} else {
+			parts = append(parts, name+`="`+value+`"`)
+		}
 	}
 	return strings.Join(parts, "; ")
 }
@@ -244,7 +271,7 @@ func (c *Client) request(method, rawURL string, body any, timeout time.Duration,
 		req.Header.Set("sec-ch-ua-platform", `"Windows"`)
 		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
 
-		// 手动添加 Cookie 头（确保跨域也能传递），保留浏览器原始值格式。
+		// 手动添加 Cookie 头（确保跨域也能传递），与原项目保持一致。
 		if len(c.Cookies) > 0 {
 			cookieHeader := buildCookieHeader(c.Cookies)
 			req.Header.Set("Cookie", cookieHeader)

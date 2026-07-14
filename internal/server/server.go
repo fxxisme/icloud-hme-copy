@@ -291,13 +291,17 @@ func (s *Server) importCookie(c *gin.Context) {
 		fail(c, http.StatusBadRequest, "cookies 不能为空")
 		return
 	}
+	cookies, err := account.ParseCookieInput(cookieInput)
+	if err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := account.ValidateHMERequiredCookies(cookies); err != nil {
+		fail(c, http.StatusBadRequest, err.Error())
+		return
+	}
 
 	if id := strings.TrimSpace(c.PostForm("id")); id != "" {
-		cookies, err := account.ParseCookieInput(cookieInput)
-		if err != nil {
-			fail(c, http.StatusBadRequest, err.Error())
-			return
-		}
 		if err := s.mgr.UpdateCookies(id, cookies); err != nil {
 			fail(c, http.StatusBadRequest, err.Error())
 			return

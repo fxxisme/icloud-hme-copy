@@ -151,6 +151,26 @@ func ParseCookieInput(raw string) (map[string]string, error) {
 	return cookies, nil
 }
 
+// ValidateHMERequiredCookies 校验原项目文档要求的四个 iCloud 全局会话 Cookie。
+func ValidateHMERequiredCookies(cookies map[string]string) error {
+	required := []string{
+		"X-APPLE-WEBAUTH-TOKEN",
+		"X-APPLE-WEBAUTH-USER",
+		"X-APPLE-WEBAUTH-HSA-TRUST",
+		"X-APPLE-DS-WEB-SESSION-TOKEN",
+	}
+	missing := make([]string, 0)
+	for _, name := range required {
+		if strings.TrimSpace(cookies[name]) == "" {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		return fmt.Errorf("缺少必需 Cookie: %s", strings.Join(missing, ", "))
+	}
+	return nil
+}
+
 // AddAccount 添加一个账号。cookieInput 可为空,后续可通过 /login 获取。
 //
 // cookieInput 支持 Header String 或 JSON。校验失败仍会保存账号(status=error),
