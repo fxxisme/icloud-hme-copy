@@ -87,11 +87,9 @@ func NewClient(cookies map[string]string, host, proxy string, verbose bool) (*Cl
 	if host == "" {
 		host = "icloud.com"
 	}
-	jar := tls_client.NewCookieJar()
 	options := []tls_client.HttpClientOption{
 		tls_client.WithTimeoutSeconds(30),
 		tls_client.WithClientProfile(profiles.Chrome_146),
-		tls_client.WithCookieJar(jar),
 		tls_client.WithNotFollowRedirects(),
 	}
 
@@ -114,37 +112,6 @@ func NewClient(cookies map[string]string, host, proxy string, verbose bool) (*Cl
 		clientID: uuid.New().String(),
 	}
 
-	// 把传入的 Cookie 灌入 jar,后续请求自动携带。
-	if len(cookies) > 0 {
-		// 设置 Cookie 到所有可能的域名
-		domains := []string{
-			"https://www.icloud.com",
-			"https://www.icloud.com.cn",
-			"https://setup.icloud.com",
-			"https://setup.icloud.com.cn",
-			"https://" + c.Host,
-		}
-
-		// 添加 serviceURL 的域名（如果已知）
-		if c.serviceURL != "" {
-			if u, err := url.Parse(c.serviceURL); err == nil {
-				domains = append(domains, u.Scheme+"://"+u.Host)
-			}
-		}
-
-		for _, domain := range domains {
-			u, _ := url.Parse(domain)
-			httpCookies := make([]*http.Cookie, 0, len(cookies))
-			for k, v := range cookies {
-				httpCookies = append(httpCookies, &http.Cookie{
-					Name:  k,
-					Value: v,
-					Path:  "/",
-				})
-			}
-			jar.SetCookies(u, httpCookies)
-		}
-	}
 	return c, nil
 }
 
@@ -161,6 +128,20 @@ func normalizeHost(host string) string {
 		return "icloud.com.cn"
 	}
 	return "icloud.com"
+}
+
+func buildCookieHeader(cookies map[string]string) string {
+	names := make([]string, 0, len(cookies))
+	for name := range cookies {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	parts := make([]string, 0, len(names))
+	for _, name := range names {
+		parts = append(parts, name+"="+cookies[name])
+	}
+	return strings.Join(parts, "; ")
 }
 
 // SetupURL 返回 iCloud setup 端点。
@@ -263,18 +244,9 @@ func (c *Client) request(method, rawURL string, body any, timeout time.Duration,
 		req.Header.Set("sec-ch-ua-platform", `"Windows"`)
 		req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.0.0 Safari/537.36")
 
-		// 手动添加 Cookie 头（确保跨域也能传递）
-		// 浏览器发送的 Cookie 值带双引号,iCloud 严格匹配
+		// 手动添加 Cookie 头（确保跨域也能传递），保留浏览器原始值格式。
 		if len(c.Cookies) > 0 {
-			cookieParts := make([]string, 0, len(c.Cookies))
-			for k, v := range c.Cookies {
-				if strings.HasPrefix(v, `"`) {
-					cookieParts = append(cookieParts, k+"="+v)
-				} else {
-					cookieParts = append(cookieParts, k+`="`+v+`"`)
-				}
-			}
-			cookieHeader := strings.Join(cookieParts, "; ")
+			cookieHeader := buildCookieHeader(c.Cookies)
 			req.Header.Set("Cookie", cookieHeader)
 			if c.Verbose {
 				c.log(">>> URL: %s", fullURL)
@@ -375,22 +347,6 @@ func (c *Client) ValidateSession() error {
 	// 剥离 :443 端口——tls-client cookie jar 按无端口 host 存储 cookie,带端口会丢失 cookie → 401
 	if strings.HasSuffix(c.serviceURL, ":443") {
 		c.serviceURL = strings.TrimSuffix(c.serviceURL, ":443")
-	}
-
-	// 获取 serviceURL 后，再次设置 Cookie 到该域名
-	if len(c.Cookies) > 0 {
-		u, _ := url.Parse(c.serviceURL)
-		httpCookies := make([]*http.Cookie, 0, len(c.Cookies))
-		for k, v := range c.Cookies {
-			httpCookies = append(httpCookies, &http.Cookie{
-				Name:  k,
-				Value: v,
-				Path:  "/",
-			})
-		}
-		c.httpc.GetCookies(u) // 触发 cookie jar 初始化
-		// 注意：需要手动设置 cookie，但 tls-client 的 CookieJar 不支持直接设置
-		// 我们需要在请求时手动添加 Cookie 头
 	}
 
 	dsInfo := data.Get("dsInfo")

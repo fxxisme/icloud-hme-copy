@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestParseCookieInputHeaderStripsPairedQuotes(t *testing.T) {
+func TestParseCookieInputHeaderPreservesValueRepresentation(t *testing.T) {
 	input := `plain=value; double="v=1:t=abc=="; single='token-value'`
 
 	cookies, err := ParseCookieInput(input)
@@ -15,8 +15,8 @@ func TestParseCookieInputHeaderStripsPairedQuotes(t *testing.T) {
 
 	want := map[string]string{
 		"plain":  "value",
-		"double": "v=1:t=abc==",
-		"single": "token-value",
+		"double": `"v=1:t=abc=="`,
+		"single": `'token-value'`,
 	}
 	for name, value := range want {
 		if cookies[name] != value {
