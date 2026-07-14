@@ -48,6 +48,8 @@ Content-Type: application/json
 }
 ```
 
+该接口也接受 `application/x-www-form-urlencoded` 格式的 `account_id` 和 `label`，供交互脚本调用。
+
 **响应:**
 ```json
 {

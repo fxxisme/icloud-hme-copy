@@ -83,6 +83,14 @@ nano deploy/cookie.txt
 
 `deploy/cookie.txt` 已被 Git 忽略并限制为 `0600` 权限；导入成功后脚本会自动清空，失败时保留内容供排查。
 
+日常操作可以直接运行交互菜单，不需要手写 curl：
+
+```bash
+./deploy/menu.sh
+```
+
+菜单支持查看账号、创建隐藏邮箱、查看别名、收取最近邮件、按隐藏邮箱筛选邮件，以及配置或更新 Cookie。有 `jq` 时响应会自动美化，没有 `jq` 也可正常使用。
+
 systemd 服务默认监听 `0.0.0.0:8081`，部署后可以直接通过服务器 IP 测试。项目本身不提供 TLS，公网使用时必须通过防火墙限制 8081 端口来源，或改为监听 `127.0.0.1:8081` 并通过 Nginx/Caddy 提供 HTTPS。查看日志和健康状态：
 
 ```bash
@@ -612,6 +620,9 @@ bash deploy/install.sh
 cp deploy/cookie.txt.example deploy/cookie.txt
 nano deploy/cookie.txt
 ./deploy/set-cookie.sh
+
+# Interactive account, alias, and inbox operations
+./deploy/menu.sh
 
 # Keep data and configuration
 bash deploy/uninstall.sh

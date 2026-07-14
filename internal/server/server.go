@@ -124,13 +124,13 @@ func fail(c *gin.Context, code int, msg string) {
 // ====================================================================
 
 type createReq struct {
-	AccountID string `json:"account_id" binding:"required"`
-	Label     string `json:"label"`
+	AccountID string `json:"account_id" form:"account_id" binding:"required"`
+	Label     string `json:"label" form:"label"`
 }
 
 func (s *Server) createAlias(c *gin.Context) {
 	var req createReq
-	if err := c.ShouldBindJSON(&req); err != nil {
+	if err := c.ShouldBind(&req); err != nil {
 		fail(c, http.StatusBadRequest, "参数错误: account_id 必填 — "+err.Error())
 		return
 	}

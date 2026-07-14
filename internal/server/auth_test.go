@@ -3,6 +3,7 @@ package server
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -41,5 +42,32 @@ func TestAPIKeyAuth(t *testing.T) {
 				t.Fatalf("status = %d, want %d", resp.Code, tt.wantStatus)
 			}
 		})
+	}
+}
+
+func TestCreateReqBindsForm(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	router.POST("/create", func(c *gin.Context) {
+		var req createReq
+		if err := c.ShouldBind(&req); err != nil {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+		if req.AccountID != "acc_test" || req.Label != "测试标签" {
+			c.Status(http.StatusUnprocessableEntity)
+			return
+		}
+		c.Status(http.StatusNoContent)
+	})
+
+	req := httptest.NewRequest(http.MethodPost, "/create",
+		strings.NewReader("account_id=acc_test&label=%E6%B5%8B%E8%AF%95%E6%A0%87%E7%AD%BE"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	resp := httptest.NewRecorder()
+	router.ServeHTTP(resp, req)
+
+	if resp.Code != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", resp.Code, http.StatusNoContent)
 	}
 }
