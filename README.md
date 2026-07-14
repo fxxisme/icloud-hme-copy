@@ -70,9 +70,10 @@ bash deploy/install.sh
 ```bash
 cp deploy/cookie.txt.example deploy/cookie.txt
 nano deploy/cookie.txt
-./deploy/set-cookie.sh             # 创建“主号”
-# ./deploy/set-cookie.sh "其他名称" # 创建其他账号
+./deploy/set-cookie.sh             # 创建账号并自动命名
 ```
+
+账号名称会自动取 `real_email` 的 `@` 前缀。同一 `real_email` 再次创建时，本次导入的账号会保留，旧的重复账号会自动删除；旧账号 ID、App Password 等附加配置也会随之删除。
 
 Cookie 失效后，通过账号 ID 更新：
 

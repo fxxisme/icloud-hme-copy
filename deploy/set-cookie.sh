@@ -6,17 +6,16 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 COOKIE_FILE="${COOKIE_FILE:-${SCRIPT_DIR}/cookie.txt}"
 ENV_FILE="/opt/icloud-hme/config/icloud-hme.env"
 SERVICE_URL="${SERVICE_URL:-http://127.0.0.1:8081}"
-ACCOUNT_NAME="主号"
 ACCOUNT_ID=""
 RESPONSE_FILE=""
 
 usage() {
   cat <<'EOF'
 用法:
-  ./deploy/set-cookie.sh [账号名称]
+  ./deploy/set-cookie.sh
   ./deploy/set-cookie.sh --id ACCOUNT_ID
 
-首次导入默认创建名为“主号”的账号，也可以传入其他名称。
+首次导入会根据 real_email 自动使用邮箱前缀作为账号名称。
 Cookie 失效后，使用 --id 更新已有账号，避免重复创建。
 EOF
 }
@@ -39,10 +38,7 @@ case "${1:-}" in
     [[ -n "${2:-}" && -z "${3:-}" ]] || { usage >&2; exit 1; }
     ACCOUNT_ID="$2"
     ;;
-  *)
-    [[ -z "${2:-}" ]] || { usage >&2; exit 1; }
-    ACCOUNT_NAME="$1"
-    ;;
+  *) usage >&2; exit 1 ;;
 esac
 
 for command_name in curl sed grep mktemp install chmod cat rm; do
@@ -73,7 +69,7 @@ FORM_ARGS=(--form "cookies=<${COOKIE_FILE}")
 if [[ -n "${ACCOUNT_ID}" ]]; then
   FORM_ARGS+=(--form-string "id=${ACCOUNT_ID}")
 else
-  FORM_ARGS+=(--form-string "name=${ACCOUNT_NAME}" --form-string "host=icloud.com")
+  FORM_ARGS+=(--form-string "name=iCloud" --form-string "host=icloud.com")
 fi
 
 RESPONSE_FILE="$(mktemp)"

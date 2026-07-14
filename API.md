@@ -228,7 +228,7 @@ Content-Type: application/json
 
 ### Cookie 文件导入
 
-用于脚本通过 multipart 表单导入完整 Cookie Header，避免 JSON 转义问题。首次创建传 `name`，更新已有账号传 `id`。
+用于脚本通过 multipart 表单导入完整 Cookie Header，避免 JSON 转义问题。首次创建时 `name` 仅为兼容字段，校验后会自动改为 `real_email` 的邮箱前缀；更新已有账号时传 `id`。
 
 ```http
 POST /api/accounts/import-cookie
@@ -240,7 +240,7 @@ name=主号
 host=icloud.com
 ```
 
-项目提供的 `deploy/set-cookie.sh` 已封装该接口。只有 Cookie 校验成功时才返回 2xx。
+项目提供的 `deploy/set-cookie.sh` 已封装该接口。只有 Cookie 校验成功时才返回 2xx。同一 `real_email` 存在多个账号时保留本次操作的账号，并通过 `removed_account_ids` 返回已删除的旧账号 ID。
 
 ---
 

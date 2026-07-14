@@ -110,14 +110,13 @@ configure_cookie() {
   fi
   "${editor}" "${COOKIE_FILE}"
 
-  local account_name account_id
+  local account_id
   read -r -p "输入已有账号 ID 进行更新，直接回车则创建新账号: " account_id
   if [[ -n "${account_id}" ]]; then
     "${SCRIPT_DIR}/set-cookie.sh" --id "${account_id}"
     CURRENT_ACCOUNT_ID="${account_id}"
   else
-    read -r -p "新账号名称（默认 主号）: " account_name
-    "${SCRIPT_DIR}/set-cookie.sh" "${account_name:-主号}"
+    "${SCRIPT_DIR}/set-cookie.sh"
   fi
 }
 

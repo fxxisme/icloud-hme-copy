@@ -311,7 +311,19 @@ func (s *Server) importCookie(c *gin.Context) {
 			fail(c, http.StatusBadRequest, message)
 			return
 		}
-		ok(c, gin.H{"id": id, "cookies_count": len(cookies)})
+		updated, removed, err := s.mgr.FinalizeCookieImport(id)
+		if err != nil {
+			fail(c, http.StatusInternalServerError, err.Error())
+			return
+		}
+		updated.Cookies = nil
+		updated.AppPassword = ""
+		c.JSON(http.StatusOK, gin.H{
+			"success":            true,
+			"data":               updated,
+			"cookies_count":      len(cookies),
+			"removed_account_ids": removed,
+		})
 		return
 	}
 
@@ -334,8 +346,18 @@ func (s *Server) importCookie(c *gin.Context) {
 		fail(c, http.StatusBadRequest, message)
 		return
 	}
+	acc, removed, err := s.mgr.FinalizeCookieImport(acc.ID)
+	if err != nil {
+		fail(c, http.StatusInternalServerError, err.Error())
+		return
+	}
 	acc.Cookies = nil
-	c.JSON(http.StatusCreated, apiResp{Success: true, Data: acc})
+	acc.AppPassword = ""
+	c.JSON(http.StatusCreated, gin.H{
+		"success":             true,
+		"data":                acc,
+		"removed_account_ids": removed,
+	})
 }
 
 func (s *Server) removeAccount(c *gin.Context) {

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -242,6 +243,42 @@ func (m *Manager) GetAccount(id string) (*Account, bool) {
 	}
 	cp := *acc
 	return &cp, true
+}
+
+// FinalizeCookieImport 根据已校验的真实邮箱规范化名称，并删除同邮箱的旧账号。
+// 当前导入的 id 始终保留。
+func (m *Manager) FinalizeCookieImport(id string) (*Account, []string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	acc, ok := m.accounts[id]
+	if !ok {
+		return nil, nil, fmt.Errorf("账号不存在: %s", id)
+	}
+
+	realEmail := strings.TrimSpace(acc.RealEmail)
+	if at := strings.Index(realEmail, "@"); at > 0 {
+		if prefix := strings.TrimSpace(realEmail[:at]); prefix != "" {
+			acc.Name = prefix
+		}
+	}
+
+	removed := make([]string, 0)
+	if realEmail != "" {
+		for otherID, other := range m.accounts {
+			if otherID != id && strings.EqualFold(strings.TrimSpace(other.RealEmail), realEmail) {
+				delete(m.accounts, otherID)
+				removed = append(removed, otherID)
+			}
+		}
+	}
+	sort.Strings(removed)
+
+	if err := m.save(); err != nil {
+		return nil, nil, err
+	}
+	cp := *acc
+	return &cp, removed, nil
 }
 
 // ListAccounts 返回所有账号(脱敏,不含 Cookies),按活跃状态排序。
